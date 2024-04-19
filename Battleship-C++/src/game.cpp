@@ -7,6 +7,8 @@
 
 Game* game;
 
+static int ship_lengths_to_place[10] = {4, 3, 3, 2, 2, 2, 1, 1, 1, 1};
+
 void Game::init() {
 	InitWindow(3 * GAME_W, 3 * GAME_H, "Battleship-C++");
 	SetWindowState(FLAG_WINDOW_RESIZABLE | FLAG_VSYNC_HINT);
@@ -14,6 +16,11 @@ void Game::init() {
 	rlDisableBackfaceCulling();
 
 	game_texture = LoadRenderTextureNoAlphaNoDepth(GAME_W, GAME_H);
+
+	state = GAME_STATE_PLACING_SHIPS;
+	player_index = 0;
+	placing_ship_w = 1;
+	placing_ship_h = ship_lengths_to_place[placing_ship_index];
 }
 
 void Game::destroy() {
@@ -32,7 +39,71 @@ void Game::run() {
 }
 
 void Game::update(float delta) {
+	switch (state) {
+		case GAME_STATE_PLACING_SHIPS: {
+			if (IsKeyPressed(KEY_R)) {
+				placing_ship_index = 0;
 
+				placing_ship_w = 1;
+				placing_ship_h = ship_lengths_to_place[placing_ship_index];
+
+				Player& p = players[player_index];
+				p.ship_count = 0;
+			}
+
+			if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT) || IsKeyPressed(KEY_SPACE)) {
+				int temp = placing_ship_w;
+				placing_ship_w = placing_ship_h;
+				placing_ship_h = temp;
+			}
+
+			if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+				Player& p = players[player_index];
+				int ship_index = p.ship_count;
+
+				Ship ship = get_hovered_ship(placing_ship_w, placing_ship_h);
+
+				p.ships[ship_index] = ship;
+				p.ship_count++;
+
+				placing_ship_index++;
+
+				if (placing_ship_index >= ArrayLength(ship_lengths_to_place)) {
+					player_index++;
+					placing_ship_index = 0;
+
+					if (player_index >= MAX_PLAYERS) {
+						state = GAME_STATE_PLAYING;
+						player_index = 0;
+					}
+				}
+
+				placing_ship_w = 1;
+				placing_ship_h = ship_lengths_to_place[placing_ship_index];
+			}
+			break;
+		}
+
+		case GAME_STATE_PLAYING: {
+			int x = get_hovered_cell_x();
+			int y = get_hovered_cell_y();
+
+			if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+				Player& opponent = get_opponent(player_index);
+				int ship_index = find_ship(opponent, x, y);
+
+				if (ship_index != -1) {
+					Ship& ship = opponent.ships[ship_index];
+					int rel_x = x - ship.x;
+					int rel_y = y - ship.y;
+					if (!ship.is_hit[rel_y][rel_x]) {
+
+					}
+				}
+			}
+			break;
+		}
+	}
 }
 
 void Game::draw(float delta) {
@@ -61,20 +132,28 @@ void Game::draw(float delta) {
 		DrawText(TextFormat("%d", y + 1), 4, 16 * (y + 1) + 4, 10, WHITE);
 	}
 
-	{
-		int x = mouse_get_x_world() / 16 - 1;
-		int y = mouse_get_y_world() / 16 - 1;
+	switch (state) {
+		case GAME_STATE_PLACING_SHIPS: {
+			Player& p = players[player_index];
+			draw_player_ships(p);
 
-		Ship ship = {};
-		ship.height = 4;
+			Ship ship = get_hovered_ship(placing_ship_w, placing_ship_h);
+			draw_ship(ship);
+			break;
+		}
 
-		x = clamp(x, 0, WIDTH - ship.width);
-		y = clamp(y, 0, HEIGHT - ship.height);
+		case GAME_STATE_PLAYING: {
+			if (IsKeyDown(KEY_SPACE)) {
+				Player& p = players[player_index];
+				draw_player_ships(p);
+			}
 
-		ship.x = x;
-		ship.y = y;
+			int x = get_hovered_cell_x();
+			int y = get_hovered_cell_y();
 
-		draw_ship(ship);
+			DrawRectangle(16 * (x + 1), 16 * (y + 1), 16, 16, RED);
+			break;
+		}
 	}
 
 	EndTextureMode();
@@ -91,8 +170,51 @@ void Game::draw(float delta) {
 	EndDrawing();
 }
 
+Player& Game::get_opponent(int player_index) {
+	Player& opponent = players[1 - player_index];
+	return opponent;
+}
+
+int Game::find_ship(Player& p, int x, int y) {
+	return -1;
+}
+
+int Game::get_hovered_cell_x() {
+	int x = mouse_get_x_world() / 16 - 1;
+	x = clamp(x, 0, WIDTH - 1);
+	return x;
+}
+
+int Game::get_hovered_cell_y() {
+	int y = mouse_get_y_world() / 16 - 1;
+	y = clamp(y, 0, HEIGHT - 1);
+	return y;
+}
+
+Ship Game::get_hovered_ship(int width, int height) {
+	int x = get_hovered_cell_x();
+	int y = get_hovered_cell_y();
+
+	x = clamp(x, 0, WIDTH  - width);
+	y = clamp(y, 0, HEIGHT - height);
+
+	Ship ship = {};
+	ship.x = x;
+	ship.y = y;
+	ship.width = width;
+	ship.height = height;
+
+	return ship;
+}
+
 void Game::draw_ship(Ship& ship) {
 	int x = (ship.x + 1) * 16;
 	int y = (ship.y + 1) * 16;
 	DrawRectangle(x, y, 16 * ship.width, 16 * ship.height, WHITE);
+}
+
+void Game::draw_player_ships(Player& p) {
+	for (int i = 0; i < p.ship_count; i++) {
+		draw_ship(p.ships[i]);
+	}
 }
