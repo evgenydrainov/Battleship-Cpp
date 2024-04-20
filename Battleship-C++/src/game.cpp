@@ -123,21 +123,24 @@ void Game::draw(float delta) {
 	{
 		Matrix proj = MatrixOrtho(0, GAME_W, 0, GAME_H, -1, 1);
 		rlSetMatrixProjection(proj);
+
+		Matrix modelview = MatrixTranslate(board_xoff, board_yoff, 0);
+		rlSetMatrixModelview(modelview);
 	}
 
 	for (int y = 0; y < HEIGHT + 1; y++) {
 		for (int x = 0; x < WIDTH + 1; x++) {
-			DrawRectangleLines(16 * x, 16 * y, 17, 17, WHITE);
+			DrawRectangleLines(16 * (x - 1), 16 * (y - 1), 17, 17, WHITE);
 		}
 	}
 
 	for (int x = 0; x < WIDTH; x++) {
 		char buf[] = {'A' + x, 0};
-		DrawText(buf, 16 * (x + 1) + 6, 4, 10, WHITE);
+		DrawText(buf, 16 * x + 6, 4 - 16, 10, WHITE);
 	}
 
 	for (int y = 0; y < HEIGHT; y++) {
-		DrawText(TextFormat("%d", y + 1), 4, 16 * (y + 1) + 4, 10, WHITE);
+		DrawText(TextFormat("%d", y + 1), 4 - 16, 16 * y + 4, 10, WHITE);
 	}
 
 	switch (state) {
@@ -158,7 +161,7 @@ void Game::draw(float delta) {
 				int x = get_hovered_cell_x();
 				int y = get_hovered_cell_y();
 
-				DrawCross(16 * (x + 1), 16 * (y + 1), 16, 16, RED);
+				DrawCross(16 * x, 16 * y, 16, 16, RED);
 			}
 			break;
 		}
@@ -171,6 +174,9 @@ void Game::draw(float delta) {
 	{
 		Matrix proj = MatrixOrtho(0, GAME_W, GAME_H, 0, -1, 1);
 		rlSetMatrixProjection(proj);
+
+		Matrix modelview = MatrixIdentity();
+		rlSetMatrixModelview(modelview);
 	}
 
 	DrawTexture(game_texture.texture, 0, 0, WHITE);
@@ -195,13 +201,13 @@ int Game::find_ship(Player& p, int x, int y) {
 }
 
 int Game::get_hovered_cell_x() {
-	int x = mouse_get_x_world() / 16 - 1;
+	int x = (mouse_get_x_world() - board_xoff) / 16;
 	x = clamp(x, 0, WIDTH - 1);
 	return x;
 }
 
 int Game::get_hovered_cell_y() {
-	int y = mouse_get_y_world() / 16 - 1;
+	int y = (mouse_get_y_world() - board_yoff) / 16;
 	y = clamp(y, 0, HEIGHT - 1);
 	return y;
 }
@@ -223,8 +229,8 @@ Ship Game::get_hovered_ship(int width, int height) {
 }
 
 void Game::draw_ship(Ship& ship) {
-	int xx = 16 * (ship.x + 1);
-	int yy = 16 * (ship.y + 1);
+	int xx = 16 * ship.x;
+	int yy = 16 * ship.y;
 
 	DrawRectangle(xx, yy, 16 * ship.width, 16 * ship.height, WHITE);
 

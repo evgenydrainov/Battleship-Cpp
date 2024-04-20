@@ -44,6 +44,9 @@ struct Game {
 	int placing_ship_w;
 	int placing_ship_h;
 
+	int board_xoff = 32;
+	int board_yoff = 32;
+
 	RenderTexture2D game_texture;
 
 	void init();
