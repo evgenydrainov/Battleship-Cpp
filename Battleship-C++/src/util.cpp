@@ -41,3 +41,8 @@ int mouse_get_x_world() {
 int mouse_get_y_world() {
 	return (int)((float)GetMouseY() / (float)GetScreenHeight() * (float)GAME_H);
 }
+
+void DrawCross(int x, int y, int width, int height, Color color) {
+	DrawLine(x, y, x + width, y + height, color);
+	DrawLine(x + width, y, x, y + height, color);
+}

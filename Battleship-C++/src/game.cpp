@@ -85,19 +85,27 @@ void Game::update(float delta) {
 		}
 
 		case GAME_STATE_PLAYING: {
-			int x = get_hovered_cell_x();
-			int y = get_hovered_cell_y();
+			if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && !IsKeyDown(KEY_SPACE)) {
+				int x = get_hovered_cell_x();
+				int y = get_hovered_cell_y();
 
-			if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-				Player& opponent = get_opponent(player_index);
-				int ship_index = find_ship(opponent, x, y);
+				Player& p = players[player_index];
+				if (!p.has_shot[y][x]) {
+					Player& opponent = get_opponent(player_index);
+					int ship_index = find_ship(opponent, x, y);
 
-				if (ship_index != -1) {
-					Ship& ship = opponent.ships[ship_index];
-					int rel_x = x - ship.x;
-					int rel_y = y - ship.y;
-					if (!ship.is_hit[rel_y][rel_x]) {
+					if (ship_index != -1) {
+						Ship& ship = opponent.ships[ship_index];
+						int rel_x = x - ship.x;
+						int rel_y = y - ship.y;
+						if (!ship.is_hit[rel_y][rel_x]) {
+							ship.is_hit[rel_y][rel_x] = true;
+							p.has_shot[y][x] = true;
 
+							state = GAME_STATE_PLAYING;
+							player_index++;
+							player_index %= MAX_PLAYERS;
+						}
 					}
 				}
 			}
@@ -146,12 +154,12 @@ void Game::draw(float delta) {
 			if (IsKeyDown(KEY_SPACE)) {
 				Player& p = players[player_index];
 				draw_player_ships(p);
+			} else {
+				int x = get_hovered_cell_x();
+				int y = get_hovered_cell_y();
+
+				DrawCross(16 * (x + 1), 16 * (y + 1), 16, 16, RED);
 			}
-
-			int x = get_hovered_cell_x();
-			int y = get_hovered_cell_y();
-
-			DrawRectangle(16 * (x + 1), 16 * (y + 1), 16, 16, RED);
 			break;
 		}
 	}
@@ -176,6 +184,13 @@ Player& Game::get_opponent(int player_index) {
 }
 
 int Game::find_ship(Player& p, int x, int y) {
+	for (int i = 0; i < p.ship_count; i++) {
+		Ship& ship = p.ships[i];
+		if (ship.x <= x && x < ship.x + ship.width
+			&& ship.y <= y && y < ship.y + ship.height) {
+			return i;
+		}
+	}
 	return -1;
 }
 
@@ -208,9 +223,18 @@ Ship Game::get_hovered_ship(int width, int height) {
 }
 
 void Game::draw_ship(Ship& ship) {
-	int x = (ship.x + 1) * 16;
-	int y = (ship.y + 1) * 16;
-	DrawRectangle(x, y, 16 * ship.width, 16 * ship.height, WHITE);
+	int xx = 16 * (ship.x + 1);
+	int yy = 16 * (ship.y + 1);
+
+	DrawRectangle(xx, yy, 16 * ship.width, 16 * ship.height, WHITE);
+
+	for (int y = 0; y < ship.height; y++) {
+		for (int x = 0; x < ship.width; x++) {
+			if (ship.is_hit[y][x]) {
+				DrawCross(xx + 16 * x, yy + 16 * y, 16, 16, RED);
+			}
+		}
+	}
 }
 
 void Game::draw_player_ships(Player& p) {

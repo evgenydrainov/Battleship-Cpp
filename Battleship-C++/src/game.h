@@ -26,6 +26,7 @@ struct Ship {
 struct Player {
 	Ship ships[PLAYER_MAX_SHIPS];
 	int ship_count;
+	bool has_shot[HEIGHT][WIDTH];
 };
 
 enum {
